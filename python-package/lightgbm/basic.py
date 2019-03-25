@@ -2349,6 +2349,30 @@ class Booster(object):
             ctypes.byref(ret)))
         return ret.value
 
+    def set_leaf_output(self, tree_id, leaf_id, leaf_value):
+        """Get the output of a leaf.
+
+        Parameters
+        ----------
+        tree_id : int
+            The index of the tree.
+        leaf_id : int
+            The index of the leaf in the tree.
+        leaf_value : double
+            The new value of the leaf
+
+        Returns
+        -------
+        self : Booster
+            Booster with set leaf.
+        """
+        _safe_call(_LIB.LGBM_BoosterSetLeafValue(
+            self.handle,
+            ctypes.c_int(tree_id),
+            ctypes.c_int(leaf_id),
+            ctypes.c_double(leaf_value)))
+        return self
+
     def _to_predictor(self, pred_parameter=None):
         """Convert to predictor."""
         predictor = _InnerPredictor(booster_handle=self.handle, pred_parameter=pred_parameter)
