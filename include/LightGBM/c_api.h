@@ -599,6 +599,16 @@ LIGHTGBM_C_EXPORT int LGBM_BoosterGetPredict(BoosterHandle handle,
                                              double* out_result);
 
 /*!
+* \brief Set prediction result at data_idx data
+* \param data_idx 0: training data, 1: 1st validation data
+* \param scores used to update the predictions
+* \return 0 when succeed, -1 when failure happens
+*/
+LIGHTGBM_C_EXPORT int LGBM_BoosterSetPredict(BoosterHandle handle,
+                                             int data_idx,
+                                             double* scores);
+
+/*!
 * \brief make prediction for file
 * \param handle handle
 * \param data_filename filename of data file

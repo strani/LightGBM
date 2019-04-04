@@ -293,6 +293,10 @@ class Booster {
     boosting_->GetPredictAt(data_idx, out_result, out_len);
   }
 
+  void SetPredictAt(int data_idx, double* scores) {
+    boosting_->SetPredictAt(data_idx, scores);
+  }
+
   void SaveModelToFile(int start_iteration, int num_iteration, const char* filename) {
     boosting_->SaveModelToFile(start_iteration, num_iteration, filename);
   }
@@ -1224,6 +1228,15 @@ int LGBM_BoosterGetPredict(BoosterHandle handle,
   API_BEGIN();
   Booster* ref_booster = reinterpret_cast<Booster*>(handle);
   ref_booster->GetPredictAt(data_idx, out_result, out_len);
+  API_END();
+}
+
+int LGBM_BoosterSetPredict(BoosterHandle handle,
+                           int data_idx,
+                           double* scores) {
+  API_BEGIN();
+  Booster* ref_booster = reinterpret_cast<Booster*>(handle);
+  ref_booster->SetPredictAt(data_idx, scores);
   API_END();
 }
 

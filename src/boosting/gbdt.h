@@ -195,6 +195,13 @@ class GBDT : public GBDTBase {
   void GetPredictAt(int data_idx, double* out_result, int64_t* out_len) override;
 
   /*!
+  * \brief Set prediction result at data_idx data
+  * \param data_idx 0: training data, 1: 1st validation data
+  * \param scores used to update the predictions
+  */
+  void SetPredictAt(int data_idx, double* scores) override;
+
+  /*!
   * \brief Get number of prediction for one data
   * \param num_iteration number of used iterations
   * \param is_pred_leaf True if predicting  leaf index

@@ -118,6 +118,13 @@ class LIGHTGBM_EXPORT Boosting {
   */
   virtual void GetPredictAt(int data_idx, double* result, int64_t* out_len) = 0;
 
+  /*!
+  * \brief Set prediction result at data_idx data
+  * \param data_idx 0: training data, 1: 1st validation data
+  * \param scores used to update the predictions
+  */
+  virtual void SetPredictAt(int data_idx, double* scores) = 0;
+
   virtual int NumPredictOneRow(int num_iteration, bool is_pred_leaf, bool is_pred_contrib) const = 0;
 
   /*!

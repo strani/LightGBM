@@ -619,6 +619,17 @@ void GBDT::GetPredictAt(int data_idx, double* out_result, int64_t* out_len) {
   }
 }
 
+void GBDT::SetPredictAt(int data_idx, double* scores) {
+  CHECK(data_idx >= 0 && data_idx <= static_cast<int>(valid_score_updater_.size()));
+
+  if (data_idx == 0) {
+    train_score_updater_->SetScores(scores, num_tree_per_iteration_);
+  } else {
+    auto used_idx = data_idx - 1;
+    valid_score_updater_[used_idx]->SetScores(scores, num_tree_per_iteration_);
+  }
+}
+
 void GBDT::ResetTrainingData(const Dataset* train_data, const ObjectiveFunction* objective_function,
                              const std::vector<const Metric*>& training_metrics) {
   if (train_data != train_data_ && !train_data_->CheckAlign(*train_data)) {

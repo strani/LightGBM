@@ -1817,6 +1817,50 @@ class Booster(object):
         self.__is_predicted_cur_iter.append(False)
         return self
 
+    def set_predictions(self, data, scores):
+        """Set the predictions for the given Dataset
+
+        Parameters
+        ----------
+        data : Dataset
+            Dataset which scores need to be updated
+        scores : 1-D numpy array or 1-D list
+            The scores to be used for updating the Dataset predictions.
+
+        Returns
+        -------
+        self : Booster
+            Booster with set scores for the given Dataset.
+        """
+        if not isinstance(data, Dataset):
+            raise TypeError('data should be Dataset instance, met {}'
+                            .format(type(data).__name__))
+        scores = list_to_1d_numpy(scores, name='scores', dtype=np.float64)
+        assert scores.flags.c_contiguous
+        if len(scores) != data.num_data():
+            raise ValueError(
+                "Lengths of score({}) and data({}) don't match"
+                .format(len(scores), self.data.num_data()))
+        # Find data_idx from dataset object
+        data_idx = -1
+        if data is self.train_set:
+            data_idx = 0
+        else:
+            for i in range_(len(self.valid_sets)):
+                if data is self.valid_sets[i]:
+                    data_idx = i + 1
+                    break
+        if data_idx == -1:
+            raise ValueError(
+                "data({}) not found in train or validation sets"
+                .format(data))
+
+        _safe_call(_LIB.LGBM_BoosterSetPredict(
+            self.handle,
+            data_idx,
+            scores.ctypes.data_as(ctypes.POINTER(ctypes.c_double))))
+        return self
+
     def reset_parameter(self, params):
         """Reset parameters of Booster.
 

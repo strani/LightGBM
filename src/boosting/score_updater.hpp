@@ -65,6 +65,15 @@ class ScoreUpdater {
       score_[offset + i] *= val;
     }
   }
+
+  inline void SetScores(const double* scores, int num_tree_per_iteration) {
+    int64_t total_size = static_cast<int64_t>(num_data_) * num_tree_per_iteration;
+    #pragma omp parallel for schedule(static)
+    for (int64_t i = 0; i < total_size; ++i) {
+      score_[i] = scores[i];
+    }
+  }
+
   /*!
   * \brief Using tree model to get prediction number, then adding to scores for all data
   *        Note: this function generally will be used on validation data too.
