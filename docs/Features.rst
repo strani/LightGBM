@@ -28,7 +28,7 @@ LightGBM uses histogram-based algorithms\ `[4, 5, 6] <#references>`__, which buc
 
    -  No need to store additional information for pre-sorting feature values
 
--  **Reduce communication cost for parallel learning**
+-  **Reduce communication cost for distributed learning**
 
 Sparse Optimization
 -------------------
@@ -45,6 +45,7 @@ Most decision tree learning algorithms grow trees by level (depth)-wise, like th
 
 .. image:: ./_static/images/level-wise.png
    :align: center
+   :alt: A diagram depicting level wise tree growth in which the best possible node is split one level down. The strategy results in a symmetric tree, where every node in a level has child nodes resulting in an additional layer of depth.
 
 LightGBM grows trees leaf-wise (best-first)\ `[7] <#references>`__. It will choose the leaf with max delta loss to grow.
 Holding ``#leaf`` fixed, leaf-wise algorithms tend to achieve lower loss than level-wise algorithms.
@@ -53,6 +54,7 @@ Leaf-wise may cause over-fitting when ``#data`` is small, so LightGBM includes t
 
 .. image:: ./_static/images/leaf-wise.png
    :align: center
+   :alt: A diagram depicting leaf wise tree growth in which only the node with the highest loss change is split and not bother with the rest of the nodes in the same level. This results in an asymmetrical tree where subsequent splitting is happening only on one side of the tree.
 
 Optimal Split for Categorical Features
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -68,14 +70,16 @@ More specifically, LightGBM sorts the histogram (for a categorical feature) acco
 Optimization in Network Communication
 -------------------------------------
 
-It only needs to use some collective communication algorithms, like "All reduce", "All gather" and "Reduce scatter", in parallel learning of LightGBM.
-LightGBM implement state-of-art algorithms\ `[9] <#references>`__.
+It only needs to use some collective communication algorithms, like "All reduce", "All gather" and "Reduce scatter", in distributed learning of LightGBM.
+LightGBM implements state-of-art algorithms\ `[9] <#references>`__.
 These collective communication algorithms can provide much better performance than point-to-point communication.
 
-Optimization in Parallel Learning
----------------------------------
+.. _Optimization in Parallel Learning:
 
-LightGBM provides the following parallel learning algorithms.
+Optimization in Distributed Learning
+------------------------------------
+
+LightGBM provides the following distributed learning algorithms.
 
 Feature Parallel
 ~~~~~~~~~~~~~~~~
@@ -147,7 +151,7 @@ Data Parallel in LightGBM
 
 We reduce communication cost of data parallel in LightGBM:
 
-1. Instead of "Merge global histograms from all local histograms", LightGBM use "Reduce Scatter" to merge histograms of different (non-overlapping) features for different workers.
+1. Instead of "Merge global histograms from all local histograms", LightGBM uses "Reduce Scatter" to merge histograms of different (non-overlapping) features for different workers.
    Then workers find the local best split on local merged histograms and sync up the global best split.
 
 2. As aforementioned, LightGBM uses histogram subtraction to speed up training.
@@ -183,7 +187,7 @@ LightGBM supports the following applications:
 
 -  cross-entropy, the objective function is logloss and supports training on non-binary labels
 
--  lambdarank, the objective function is lambdarank with NDCG
+-  LambdaRank, the objective function is LambdaRank with NDCG
 
 LightGBM supports the following metrics:
 
@@ -204,6 +208,10 @@ LightGBM supports the following metrics:
 -  Multi-class log loss
 
 -  Multi-class error rate
+
+-  AUC-mu ``(new in v3.0.0)``
+
+-  Average precision ``(new in v3.1.0)``
 
 -  Fair
 
@@ -244,9 +252,9 @@ Other Features
 
 -  Validation metric output during training
 
--  Multi validation data
+-  Multiple validation data
 
--  Multi metrics
+-  Multiple metrics
 
 -  Early stopping (both training and prediction)
 
@@ -281,9 +289,9 @@ References
 
 .. _LightGBM\: A Highly Efficient Gradient Boosting Decision Tree: https://papers.nips.cc/paper/6907-lightgbm-a-highly-efficient-gradient-boosting-decision-tree.pdf
 
-.. _On Grouping for Maximum Homogeneity: https://www.researchgate.net/publication/242580910_On_Grouping_for_Maximum_Homogeneity
+.. _On Grouping for Maximum Homogeneity: https://www.tandfonline.com/doi/abs/10.1080/01621459.1958.10501479
 
-.. _Optimization of collective communication operations in MPICH: http://wwwi10.lrr.in.tum.de/~gerndt/home/Teaching/HPCSeminar/mpich_multi_coll.pdf
+.. _Optimization of collective communication operations in MPICH: https://www.mcs.anl.gov/~thakur/papers/ijhpca-coll.pdf
 
 .. _A Communication-Efficient Parallel Algorithm for Decision Tree: http://papers.nips.cc/paper/6381-a-communication-efficient-parallel-algorithm-for-decision-tree
 

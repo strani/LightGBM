@@ -1,9 +1,14 @@
-// this file can either be read and passed to an OpenCL compiler directly,
-// or included in a C++11 source file as a string literal
+/*!
+ * Copyright (c) 2017 Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See LICENSE file in the project root for license information.
+ *
+ * \brief This file can either be read and passed to an OpenCL compiler directly,
+ *        or included in a C++11 source file as a string literal.
+ */
 #ifndef __OPENCL_VERSION__
 // If we are including this file in C++,
 // the entire source file following (except the last #endif) will become
-// a raw string literal. The extra ")" is just for mathcing parentheses
+// a raw string literal. The extra ")" is just for matching parentheses
 // to make the editor happy. The extra ")" and extra endif will be skipped.
 // DO NOT add anything between here and the next #ifdef, otherwise you need
 // to modify the skip count at the end of this file.
@@ -150,15 +155,6 @@ void within_kernel_reduction256x4(uchar4 feature_mask,
     acc_type f1_hess_bin = local_hist[ltid * 8 + 5];
     acc_type f2_hess_bin = local_hist[ltid * 8 + 6];
     acc_type f3_hess_bin = local_hist[ltid * 8 + 7];
-    __local uint* restrict local_cnt = (__local uint *)(local_hist + 4 * 2 * NUM_BINS);
-    #if POWER_FEATURE_WORKGROUPS != 0
-    uint  f0_cont_bin = ltid ? local_cnt[ltid * 4] : old_val_f0_cont_bin0;
-    #else
-    uint  f0_cont_bin = local_cnt[ltid * 4];
-    #endif
-    uint  f1_cont_bin = local_cnt[ltid * 4 + 1];
-    uint  f2_cont_bin = local_cnt[ltid * 4 + 2];
-    uint  f3_cont_bin = local_cnt[ltid * 4 + 3];
     ushort i;
     // printf("%d-pre(skip %d): %f %f %f %f %f %f %f %f %d %d %d %d", ltid, skip_id, f0_grad_bin, f1_grad_bin, f2_grad_bin, f3_grad_bin, f0_hess_bin, f1_hess_bin, f2_hess_bin, f3_hess_bin, f0_cont_bin, f1_cont_bin, f2_cont_bin, f3_cont_bin);
 #if POWER_FEATURE_WORKGROUPS != 0
@@ -168,70 +164,62 @@ void within_kernel_reduction256x4(uchar4 feature_mask,
         if (feature_mask.s3) {
             f0_grad_bin += *p;          p += NUM_BINS;
             f0_hess_bin += *p;          p += NUM_BINS;
-            f0_cont_bin += as_acc_int_type(*p); p += NUM_BINS;
         }
         else {
-            p += 3 * NUM_BINS;
+            p += 2 * NUM_BINS;
         }
         if (feature_mask.s2) {
             f1_grad_bin += *p;          p += NUM_BINS;
             f1_hess_bin += *p;          p += NUM_BINS;
-            f1_cont_bin += as_acc_int_type(*p); p += NUM_BINS;
         }
         else {
-            p += 3 * NUM_BINS;
+            p += 2 * NUM_BINS;
         }
         if (feature_mask.s1) {
             f2_grad_bin += *p;          p += NUM_BINS;
             f2_hess_bin += *p;          p += NUM_BINS;
-            f2_cont_bin += as_acc_int_type(*p); p += NUM_BINS;
         }
         else {
-            p += 3 * NUM_BINS;
+            p += 2 * NUM_BINS;
         }
         if (feature_mask.s0) {
             f3_grad_bin += *p;          p += NUM_BINS;
             f3_hess_bin += *p;          p += NUM_BINS;
-            f3_cont_bin += as_acc_int_type(*p); p += NUM_BINS;
         }
         else {
-            p += 3 * NUM_BINS;
+            p += 2 * NUM_BINS;
         }
     }
     // skip the counters we already have
-    p += 3 * 4 * NUM_BINS;
+    p += 2 * 4 * NUM_BINS;
     for (i = i + 1; i < num_sub_hist; ++i) {
         if (feature_mask.s3) {
             f0_grad_bin += *p;          p += NUM_BINS;
             f0_hess_bin += *p;          p += NUM_BINS;
-            f0_cont_bin += as_acc_int_type(*p); p += NUM_BINS;
         }
         else {
-            p += 3 * NUM_BINS;
+            p += 2 * NUM_BINS;
         }
         if (feature_mask.s2) {
             f1_grad_bin += *p;          p += NUM_BINS;
             f1_hess_bin += *p;          p += NUM_BINS;
-            f1_cont_bin += as_acc_int_type(*p); p += NUM_BINS;
         }
         else {
-            p += 3 * NUM_BINS;
+            p += 2 * NUM_BINS;
         }
         if (feature_mask.s1) {
             f2_grad_bin += *p;          p += NUM_BINS;
             f2_hess_bin += *p;          p += NUM_BINS;
-            f2_cont_bin += as_acc_int_type(*p); p += NUM_BINS;
         }
         else {
-            p += 3 * NUM_BINS;
+            p += 2 * NUM_BINS;
         }
         if (feature_mask.s0) {
             f3_grad_bin += *p;          p += NUM_BINS;
             f3_hess_bin += *p;          p += NUM_BINS;
-            f3_cont_bin += as_acc_int_type(*p); p += NUM_BINS;
         }
         else {
-            p += 3 * NUM_BINS;
+            p += 2 * NUM_BINS;
         }
     }
     // printf("%d-aft: %f %f %f %f %f %f %f %f %d %d %d %d", ltid, f0_grad_bin, f1_grad_bin, f2_grad_bin, f3_grad_bin, f0_hess_bin, f1_hess_bin, f2_hess_bin, f3_hess_bin, f0_cont_bin, f1_cont_bin, f2_cont_bin, f3_cont_bin);
@@ -240,18 +228,14 @@ void within_kernel_reduction256x4(uchar4 feature_mask,
     barrier(CLK_LOCAL_MEM_FENCE);
     #if USE_DP_FLOAT == 0
     // reverse the f3...f0 order to match the real order
-    local_hist[0 * 3 * NUM_BINS + ltid * 3 + 0] = f3_grad_bin;
-    local_hist[0 * 3 * NUM_BINS + ltid * 3 + 1] = f3_hess_bin;
-    local_hist[0 * 3 * NUM_BINS + ltid * 3 + 2] = as_acc_type((acc_int_type)f3_cont_bin);
-    local_hist[1 * 3 * NUM_BINS + ltid * 3 + 0] = f2_grad_bin;
-    local_hist[1 * 3 * NUM_BINS + ltid * 3 + 1] = f2_hess_bin;
-    local_hist[1 * 3 * NUM_BINS + ltid * 3 + 2] = as_acc_type((acc_int_type)f2_cont_bin);
-    local_hist[2 * 3 * NUM_BINS + ltid * 3 + 0] = f1_grad_bin;
-    local_hist[2 * 3 * NUM_BINS + ltid * 3 + 1] = f1_hess_bin;
-    local_hist[2 * 3 * NUM_BINS + ltid * 3 + 2] = as_acc_type((acc_int_type)f1_cont_bin);
-    local_hist[3 * 3 * NUM_BINS + ltid * 3 + 0] = f0_grad_bin;
-    local_hist[3 * 3 * NUM_BINS + ltid * 3 + 1] = f0_hess_bin;
-    local_hist[3 * 3 * NUM_BINS + ltid * 3 + 2] = as_acc_type((acc_int_type)f0_cont_bin);
+    local_hist[0 * 2 * NUM_BINS + ltid * 2 + 0] = f3_grad_bin;
+    local_hist[0 * 2 * NUM_BINS + ltid * 2 + 1] = f3_hess_bin;
+    local_hist[1 * 2 * NUM_BINS + ltid * 2 + 0] = f2_grad_bin;
+    local_hist[1 * 2 * NUM_BINS + ltid * 2 + 1] = f2_hess_bin;
+    local_hist[2 * 2 * NUM_BINS + ltid * 2 + 0] = f1_grad_bin;
+    local_hist[2 * 2 * NUM_BINS + ltid * 2 + 1] = f1_hess_bin;
+    local_hist[3 * 2 * NUM_BINS + ltid * 2 + 0] = f0_grad_bin;
+    local_hist[3 * 2 * NUM_BINS + ltid * 2 + 1] = f0_hess_bin;
     barrier(CLK_LOCAL_MEM_FENCE);
     /*
     for (ushort i = ltid; i < 4 * 3 * NUM_BINS; i += lsize) {
@@ -262,34 +246,28 @@ void within_kernel_reduction256x4(uchar4 feature_mask,
     if (feature_mask.s0) {
         output_buf[i] = local_hist[i];
         output_buf[i + NUM_BINS] = local_hist[i + NUM_BINS];
-        output_buf[i + 2 * NUM_BINS] = local_hist[i + 2 * NUM_BINS];
     }
-    i += 1 * 3 * NUM_BINS;
+    i += 1 * 2 * NUM_BINS;
     if (feature_mask.s1) {
         output_buf[i] = local_hist[i];
         output_buf[i + NUM_BINS] = local_hist[i + NUM_BINS];
-        output_buf[i + 2 * NUM_BINS] = local_hist[i + 2 * NUM_BINS];
     }
-    i += 1 * 3 * NUM_BINS;
+    i += 1 * 2 * NUM_BINS;
     if (feature_mask.s2) {
         output_buf[i] = local_hist[i];
         output_buf[i + NUM_BINS] = local_hist[i + NUM_BINS];
-        output_buf[i + 2 * NUM_BINS] = local_hist[i + 2 * NUM_BINS];
     }
-    i += 1 * 3 * NUM_BINS;
-    if (feature_mask.s3 && i < 4 * 3 * NUM_BINS) {
+    i += 1 * 2 * NUM_BINS;
+    if (feature_mask.s3 && i < 4 * 2 * NUM_BINS) {
         output_buf[i] = local_hist[i];
         output_buf[i + NUM_BINS] = local_hist[i + NUM_BINS];
-        output_buf[i + 2 * NUM_BINS] = local_hist[i + 2 * NUM_BINS];
     }
     #else
     // when double precision is used, we need to write twice, because local memory size is not enough
-    local_hist[0 * 3 * NUM_BINS + ltid * 3 + 0] = f3_grad_bin;
-    local_hist[0 * 3 * NUM_BINS + ltid * 3 + 1] = f3_hess_bin;
-    local_hist[0 * 3 * NUM_BINS + ltid * 3 + 2] = as_acc_type((acc_int_type)f3_cont_bin);
-    local_hist[1 * 3 * NUM_BINS + ltid * 3 + 0] = f2_grad_bin;
-    local_hist[1 * 3 * NUM_BINS + ltid * 3 + 1] = f2_hess_bin;
-    local_hist[1 * 3 * NUM_BINS + ltid * 3 + 2] = as_acc_type((acc_int_type)f2_cont_bin);
+    local_hist[0 * 2 * NUM_BINS + ltid * 2 + 0] = f3_grad_bin;
+    local_hist[0 * 2 * NUM_BINS + ltid * 2 + 1] = f3_hess_bin;
+    local_hist[1 * 2 * NUM_BINS + ltid * 2 + 0] = f2_grad_bin;
+    local_hist[1 * 2 * NUM_BINS + ltid * 2 + 1] = f2_hess_bin;
     barrier(CLK_LOCAL_MEM_FENCE);
     /*
     for (ushort i = ltid; i < 2 * 3 * NUM_BINS; i += lsize) {
@@ -300,21 +278,17 @@ void within_kernel_reduction256x4(uchar4 feature_mask,
     if (feature_mask.s0) {
         output_buf[i] = local_hist[i];
         output_buf[i + NUM_BINS] = local_hist[i + NUM_BINS];
-        output_buf[i + 2 * NUM_BINS] = local_hist[i + 2 * NUM_BINS];
     }
-    i += 1 * 3 * NUM_BINS;
+    i += 1 * 2 * NUM_BINS;
     if (feature_mask.s1) {
         output_buf[i] = local_hist[i];
         output_buf[i + NUM_BINS] = local_hist[i + NUM_BINS];
-        output_buf[i + 2 * NUM_BINS] = local_hist[i + 2 * NUM_BINS];
     }
     barrier(CLK_LOCAL_MEM_FENCE);
-    local_hist[0 * 3 * NUM_BINS + ltid * 3 + 0] = f1_grad_bin;
-    local_hist[0 * 3 * NUM_BINS + ltid * 3 + 1] = f1_hess_bin;
-    local_hist[0 * 3 * NUM_BINS + ltid * 3 + 2] = as_acc_type((acc_int_type)f1_cont_bin);
-    local_hist[1 * 3 * NUM_BINS + ltid * 3 + 0] = f0_grad_bin;
-    local_hist[1 * 3 * NUM_BINS + ltid * 3 + 1] = f0_hess_bin;
-    local_hist[1 * 3 * NUM_BINS + ltid * 3 + 2] = as_acc_type((acc_int_type)f0_cont_bin);
+    local_hist[0 * 2 * NUM_BINS + ltid * 2 + 0] = f1_grad_bin;
+    local_hist[0 * 2 * NUM_BINS + ltid * 2 + 1] = f1_hess_bin;
+    local_hist[1 * 2 * NUM_BINS + ltid * 2 + 0] = f0_grad_bin;
+    local_hist[1 * 2 * NUM_BINS + ltid * 2 + 1] = f0_hess_bin;
     barrier(CLK_LOCAL_MEM_FENCE);
     /*
     for (ushort i = ltid; i < 2 * 3 * NUM_BINS; i += lsize) {
@@ -323,15 +297,13 @@ void within_kernel_reduction256x4(uchar4 feature_mask,
     */
     i = ltid;
     if (feature_mask.s2) {
-        output_buf[i + 2 * 3 * NUM_BINS] = local_hist[i];
-        output_buf[i + 2 * 3 * NUM_BINS + NUM_BINS] = local_hist[i + NUM_BINS];
-        output_buf[i + 2 * 3 * NUM_BINS + 2 * NUM_BINS] = local_hist[i + 2 * NUM_BINS];
+        output_buf[i + 2 * 2 * NUM_BINS] = local_hist[i];
+        output_buf[i + 2 * 2 * NUM_BINS + NUM_BINS] = local_hist[i + NUM_BINS];
     }
-    i += 1 * 3 * NUM_BINS;
+    i += 1 * 2 * NUM_BINS;
     if (feature_mask.s3) {
-        output_buf[i + 2 * 3 * NUM_BINS] = local_hist[i];
-        output_buf[i + 2 * 3 * NUM_BINS + NUM_BINS] = local_hist[i + NUM_BINS];
-        output_buf[i + 2 * 3 * NUM_BINS + 2 * NUM_BINS] = local_hist[i + 2 * NUM_BINS];
+        output_buf[i + 2 * 2 * NUM_BINS] = local_hist[i];
+        output_buf[i + 2 * 2 * NUM_BINS + NUM_BINS] = local_hist[i + NUM_BINS];
     }
     #endif
 }
@@ -392,14 +364,16 @@ __kernel void histogram256(__global const uchar4* feature_data_base,
     // assume this starts at 32 * 4 = 128-byte boundary
     // total size: 2 * 4 * 256 * size_of(float) = 8 KB
     // organization: each feature/grad/hessian is at a different bank, 
-    //               as indepedent of the feature value as possible
+    //               as independent of the feature value as possible
     __local acc_type * gh_hist = (__local acc_type *)shared_array;
     // counter histogram
     // total size: 4 * 256 * size_of(uint) = 4 KB
+    #if CONST_HESSIAN == 1
     __local uint * cnt_hist = (__local uint *)(gh_hist + 2 * 4 * NUM_BINS);
+    #endif 
 
     // thread 0, 1, 2, 3 compute histograms for gradients first
-    // thread 4, 5, 6, 7 compute histograms for hessians  first
+    // thread 4, 5, 6, 7 compute histograms for Hessians  first
     // etc.
     uchar is_hessian_first = (ltid >> 2) & 1;
     
@@ -409,7 +383,7 @@ __kernel void histogram256(__global const uchar4* feature_data_base,
     __global const uchar4* feature_data = feature_data_base + group_feature * feature_size;
     // size of threads that process this feature4
     const uint subglobal_size = lsize * (1 << POWER_FEATURE_WORKGROUPS);
-    // equavalent thread ID in this subgroup for this feature4
+    // equivalent thread ID in this subgroup for this feature4
     const uint subglobal_tid  = gtid - group_feature * subglobal_size;
     // extract feature mask, when a byte is set to 0, that feature is disabled
     #if ENABLE_ALL_FEATURES == 1
@@ -467,7 +441,7 @@ R""()
     // there are 2^POWER_FEATURE_WORKGROUPS workgroups processing each feature4
     for (uint i = subglobal_tid; i < num_data; i += subglobal_size) {
         // prefetch the next iteration variables
-        // we don't need bondary check because we have made the buffer larger
+        // we don't need boundary check because we have made the buffer larger
         stat1_next = ordered_gradients[i + subglobal_size];
         #if CONST_HESSIAN == 0
         stat2_next = ordered_hessians[i + subglobal_size];
@@ -501,11 +475,11 @@ R""()
             addr2 = addr + 4 - 8 * is_hessian_first;
             atomic_local_add_f(gh_hist + addr, s3_stat1);
             // thread 0, 1, 2, 3 now process feature 0, 1, 2, 3's gradients for example 0, 1, 2, 3
-            // thread 4, 5, 6, 7 now process feature 0, 1, 2, 3's hessians  for example 4, 5, 6, 7
+            // thread 4, 5, 6, 7 now process feature 0, 1, 2, 3's Hessians  for example 4, 5, 6, 7
             #if CONST_HESSIAN == 0
             atomic_local_add_f(gh_hist + addr2, s3_stat2);
             #endif
-            // thread 0, 1, 2, 3 now process feature 0, 1, 2, 3's hessians  for example 0, 1, 2, 3
+            // thread 0, 1, 2, 3 now process feature 0, 1, 2, 3's Hessians  for example 0, 1, 2, 3
             // thread 4, 5, 6, 7 now process feature 0, 1, 2, 3's gradients for example 4, 5, 6, 7
             s3_stat1 = stat1;
             s3_stat2 = stat2;
@@ -526,11 +500,11 @@ R""()
             addr2 = addr + 4 - 8 * is_hessian_first;
             atomic_local_add_f(gh_hist + addr, s2_stat1);
             // thread 0, 1, 2, 3 now process feature 1, 2, 3, 0's gradients for example 0, 1, 2, 3
-            // thread 4, 5, 6, 7 now process feature 1, 2, 3, 0's hessians  for example 4, 5, 6, 7
+            // thread 4, 5, 6, 7 now process feature 1, 2, 3, 0's Hessians  for example 4, 5, 6, 7
             #if CONST_HESSIAN == 0
             atomic_local_add_f(gh_hist + addr2, s2_stat2);
             #endif
-            // thread 0, 1, 2, 3 now process feature 1, 2, 3, 0's hessians  for example 0, 1, 2, 3
+            // thread 0, 1, 2, 3 now process feature 1, 2, 3, 0's Hessians  for example 0, 1, 2, 3
             // thread 4, 5, 6, 7 now process feature 1, 2, 3, 0's gradients for example 4, 5, 6, 7
             s2_stat1 = stat1;
             s2_stat2 = stat2;
@@ -543,7 +517,7 @@ R""()
 
 
         // prefetch the next iteration variables
-        // we don't need bondary check because if it is out of boundary, ind_next = 0
+        // we don't need boundary check because if it is out of boundary, ind_next = 0
         #ifndef IGNORE_INDICES
         feature4_next = feature_data[ind_next];
         #endif
@@ -558,11 +532,11 @@ R""()
             addr2 = addr + 4 - 8 * is_hessian_first;
             atomic_local_add_f(gh_hist + addr, s1_stat1);
             // thread 0, 1, 2, 3 now process feature 2, 3, 0, 1's gradients for example 0, 1, 2, 3
-            // thread 4, 5, 6, 7 now process feature 2, 3, 0, 1's hessians  for example 4, 5, 6, 7
+            // thread 4, 5, 6, 7 now process feature 2, 3, 0, 1's Hessians  for example 4, 5, 6, 7
             #if CONST_HESSIAN == 0
             atomic_local_add_f(gh_hist + addr2, s1_stat2);
             #endif
-            // thread 0, 1, 2, 3 now process feature 2, 3, 0, 1's hessians  for example 0, 1, 2, 3
+            // thread 0, 1, 2, 3 now process feature 2, 3, 0, 1's Hessians  for example 0, 1, 2, 3
             // thread 4, 5, 6, 7 now process feature 2, 3, 0, 1's gradients for example 4, 5, 6, 7
             s1_stat1 = stat1;
             s1_stat2 = stat2;
@@ -583,11 +557,11 @@ R""()
             addr2 = addr + 4 - 8 * is_hessian_first;
             atomic_local_add_f(gh_hist + addr, s0_stat1);
             // thread 0, 1, 2, 3 now process feature 3, 0, 1, 2's gradients for example 0, 1, 2, 3
-            // thread 4, 5, 6, 7 now process feature 3, 0, 1, 2's hessians  for example 4, 5, 6, 7
+            // thread 4, 5, 6, 7 now process feature 3, 0, 1, 2's Hessians  for example 4, 5, 6, 7
             #if CONST_HESSIAN == 0
             atomic_local_add_f(gh_hist + addr2, s0_stat2);
             #endif
-            // thread 0, 1, 2, 3 now process feature 3, 0, 1, 2's hessians  for example 0, 1, 2, 3
+            // thread 0, 1, 2, 3 now process feature 3, 0, 1, 2's Hessians  for example 0, 1, 2, 3
             // thread 4, 5, 6, 7 now process feature 3, 0, 1, 2's gradients for example 4, 5, 6, 7
             s0_stat1 = stat1;
             s0_stat2 = stat2;
@@ -597,7 +571,7 @@ R""()
             s0_stat1 += stat1;
             s0_stat2 += stat2;
         }
-
+        #if CONST_HESSIAN == 1
         // STAGE 3: accumulate counter
         // there are 4 counters for 4 features
         // thread 0, 1, 2, 3 now process feature 0, 1, 2, 3's counts for example 0, 1, 2, 3
@@ -628,6 +602,7 @@ R""()
             addr = bin * 4 + offset;
             atom_inc(cnt_hist + addr);
         }
+        #endif
         stat1 = stat1_next;
         stat2 = stat2_next;
         feature4 = feature4_next;
@@ -736,7 +711,7 @@ R""()
     uint feature4_id = (group_id >> POWER_FEATURE_WORKGROUPS);
     // if there is only one workgroup processing this feature4, don't even need to write
     #if POWER_FEATURE_WORKGROUPS != 0
-    __global acc_type * restrict output = (__global acc_type * restrict)output_buf + group_id * 4 * 3 * NUM_BINS;
+    __global acc_type * restrict output = (__global acc_type * restrict)output_buf + group_id * 4 * 2 * NUM_BINS;
     // write gradients and hessians
     __global acc_type * restrict ptr_f = output;
     for (ushort j = 0; j < 4; ++j) {
@@ -746,27 +721,17 @@ R""()
             acc_type value = gh_hist[i * 4 + j];
             ptr_f[(i & 1) * NUM_BINS + (i >> 1)] = value;
         }
-        ptr_f += 3 * NUM_BINS;
-    }
-    // write counts
-    __global acc_int_type * restrict ptr_i = (__global acc_int_type * restrict)(output + 2 * NUM_BINS);
-    for (ushort j = 0; j < 4; ++j) {
-        for (ushort i = ltid; i < NUM_BINS; i += lsize) {
-            // FIXME: 2-way bank conflict
-            uint value = cnt_hist[i * 4 + j];
-            ptr_i[i] = value;
-        }
-        ptr_i += 3 * NUM_BINS;
+        ptr_f += 2 * NUM_BINS;
     }
     barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
     mem_fence(CLK_GLOBAL_MEM_FENCE);
-    // To avoid the cost of an extra reducting kernel, we have to deal with some 
+    // To avoid the cost of an extra reducing kernel, we have to deal with some 
     // gray area in OpenCL. We want the last work group that process this feature to
     // make the final reduction, and other threads will just quit.
     // This requires that the results written by other workgroups available to the
     // last workgroup (memory consistency)
     #if NVIDIA == 1
-    // this is equavalent to CUDA __threadfence();
+    // this is equivalent to CUDA __threadfence();
     // ensure the writes above goes to main memory and other workgroups can see it
     asm volatile("{\n\tmembar.gl;\n\t}\n\t" :::"memory");
     #else
@@ -783,7 +748,7 @@ R""()
     // The is done by using an global atomic counter.
     // On AMD GPUs ideally this should be done in GDS,
     // but currently there is no easy way to access it via OpenCL.
-    __local uint * counter_val = cnt_hist;
+    __local uint * counter_val = (__local uint *)(gh_hist + 2 * 4 * NUM_BINS);;
     // backup the old value
     uint old_val = *counter_val;
     if (ltid == 0) {
@@ -792,7 +757,7 @@ R""()
     }
     // make sure everyone in this workgroup is here
     barrier(CLK_LOCAL_MEM_FENCE);
-    // everyone in this wrokgroup: if we are the last workgroup, then do reduction!
+    // everyone in this workgroup: if we are the last workgroup, then do reduction!
     if (*counter_val == (1 << POWER_FEATURE_WORKGROUPS) - 1) {
         if (ltid == 0) {
             // printf("workgroup %d: %g %g %g %g %g %g %g %g\n", group_id, gh_hist[0], gh_hist[1], gh_hist[2], gh_hist[3], gh_hist[4], gh_hist[5], gh_hist[6], gh_hist[7]);
@@ -809,11 +774,11 @@ R""()
         // locate our feature4's block in output memory
         uint output_offset = (feature4_id << POWER_FEATURE_WORKGROUPS);
         __global acc_type const * restrict feature4_subhists = 
-                 (__global acc_type *)output_buf + output_offset * 4 * 3 * NUM_BINS;
+                 (__global acc_type *)output_buf + output_offset * 4 * 2 * NUM_BINS;
         // skip reading the data already in local memory
         uint skip_id = group_id ^ output_offset;
         // locate output histogram location for this feature4
-        __global acc_type* restrict hist_buf = hist_buf_base + feature4_id * 4 * 3 * NUM_BINS;
+        __global acc_type* restrict hist_buf = hist_buf_base + feature4_id * 4 * 2 * NUM_BINS;
         within_kernel_reduction256x4(feature_mask, feature4_subhists, skip_id, old_val, 1 << POWER_FEATURE_WORKGROUPS, 
                                      hist_buf, (__local acc_type *)shared_array);
         // if (ltid == 0) 
@@ -822,7 +787,5 @@ R""()
 }
 
 // The following line ends the string literal, adds an extra #endif at the end
-// the +9 skips extra characters ")", newline, "#endif" and newline at the beginning
-// )"" "\n#endif" + 9
+// )"" "\n#endif"
 #endif
-

@@ -3,6 +3,13 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+.. image:: ./logo/LightGBM_logo_black_text.svg
+   :align: center
+   :width: 600
+   :alt: Light Gradient Boosting Machine logo.
+
+|
+
 Welcome to LightGBM's documentation!
 ====================================
 
@@ -11,7 +18,7 @@ Welcome to LightGBM's documentation!
 - Faster training speed and higher efficiency.
 - Lower memory usage.
 - Better accuracy.
-- Support of parallel and GPU learning.
+- Support of parallel, distributed, and GPU learning.
 - Capable of handling large-scale data.
 
 For more details, please refer to `Features <./Features.rst>`__.
@@ -27,8 +34,10 @@ For more details, please refer to `Features <./Features.rst>`__.
    Experiments <Experiments>
    Parameters <Parameters>
    Parameters Tuning <Parameters-Tuning>
+   C API <C-API>
    Python API <Python-API>
-   Parallel Learning Guide <Parallel-Learning-Guide>
+   R API <https://lightgbm.readthedocs.io/en/latest/R/reference/>
+   Distributed Learning Guide <Parallel-Learning-Guide>
    GPU Tutorial <GPU-Tutorial>
    Advanced Topics <Advanced-Topics>
    FAQ <FAQ>

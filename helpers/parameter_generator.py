@@ -23,8 +23,8 @@ def get_parameter_infos(config_hpp):
         Tuple with names and content of sections.
     """
     is_inparameter = False
-    parameter_group = None
     cur_key = None
+    key_lvl = 0
     cur_info = {}
     keys = []
     member_infos = []
@@ -33,10 +33,12 @@ def get_parameter_infos(config_hpp):
             if "#pragma region Parameters" in line:
                 is_inparameter = True
             elif "#pragma region" in line and "Parameters" in line:
+                key_lvl += 1
                 cur_key = line.split("region")[1].strip()
-                keys.append(cur_key)
+                keys.append((cur_key, key_lvl))
                 member_infos.append([])
             elif '#pragma endregion' in line:
+                key_lvl -= 1
                 if cur_key is not None:
                     cur_key = None
                 elif is_inparameter:
@@ -121,6 +123,34 @@ def get_alias(infos):
     return pairs
 
 
+def parse_check(check, reverse=False):
+    """Parse the constraint.
+
+    Parameters
+    ----------
+    check : string
+        String representation of the constraint.
+    reverse : bool, optional (default=False)
+        Whether to reverse the sign of the constraint.
+
+    Returns
+    -------
+    pair : tuple
+        Parsed constraint in the form of tuple (value, sign).
+    """
+    try:
+        idx = 1
+        float(check[idx:])
+    except ValueError:
+        idx = 2
+        float(check[idx:])
+    if reverse:
+        reversed_sign = {'<': '>', '>': '<', '<=': '>=', '>=': '<='}
+        return check[idx:], reversed_sign[check[:idx]]
+    else:
+        return check[idx:], check[:idx]
+
+
 def set_one_var_from_string(name, param_type, checks):
     """Construct code for auto config file for one param value.
 
@@ -141,18 +171,20 @@ def set_one_var_from_string(name, param_type, checks):
     ret = ""
     univar_mapper = {"int": "GetInt", "double": "GetDouble", "bool": "GetBool", "std::string": "GetString"}
     if "vector" not in param_type:
-        ret += "  %s(params, \"%s\", &%s);\n" % (univar_mapper[param_type], name, name)
+        ret += f'  {univar_mapper[param_type]}(params, "{name}", &{name});\n'
         if len(checks) > 0:
+            check_mapper = {"<": "LT", ">": "GT", "<=": "LE", ">=": "GE"}
             for check in checks:
-                ret += "  CHECK(%s %s);\n" % (name, check)
+                value, sign = parse_check(check)
+                ret += f"  CHECK_{check_mapper[sign]}({name}, {value});\n"
         ret += "\n"
     else:
-        ret += "  if (GetString(params, \"%s\", &tmp_str)) {\n" % (name)
+        ret += f'  if (GetString(params, "{name}", &tmp_str)) {{\n'
         type2 = param_type.split("<")[1][:-1]
         if type2 == "std::string":
-            ret += "    %s = Common::Split(tmp_str.c_str(), ',');\n" % (name)
+            ret += f"    {name} = Common::Split(tmp_str.c_str(), ',');\n"
         else:
-            ret += "    %s = Common::StringToArray<%s>(tmp_str, ',');\n" % (name, type2)
+            ret += f"    {name} = Common::StringToArray<{type2}>(tmp_str, ',');\n"
         ret += "  }\n\n"
     return ret
 
@@ -169,36 +201,11 @@ def gen_parameter_description(sections, descriptions, params_rst):
     params_rst : string
         Path to the file with parameters documentation.
     """
-    def parse_check(check, reverse=False):
-        """Parse the constraint.
-
-        Parameters
-        ----------
-        check : string
-            String representation of the constraint.
-        reverse : bool, optional (default=False)
-            Whether to reverse the sign of the constraint.
-
-        Returns
-        -------
-        pair : tuple
-            Parsed constraint in the form of tuple (value, sign).
-        """
-        try:
-            idx = 1
-            float(check[idx:])
-        except ValueError:
-            idx = 2
-            float(check[idx:])
-        if reverse:
-            reversed_sign = {'<': '>', '>': '<', '<=': '>=', '>=': '<='}
-            return check[idx:], reversed_sign[check[:idx]]
-        else:
-            return check[idx:], check[:idx]
-
     params_to_write = []
-    for section_name, section_params in zip(sections, descriptions):
-        params_to_write.append('{0}\n{1}'.format(section_name, '-' * len(section_name)))
+    lvl_mapper = {1: '-', 2: '~'}
+    for (section_name, section_lvl), section_params in zip(sections, descriptions):
+        heading_sign = lvl_mapper[section_lvl]
+        params_to_write.append(f'{section_name}\n{heading_sign * len(section_name)}')
         for param_desc in section_params:
             name = param_desc['name'][0]
             default_raw = param_desc['default'][0]
@@ -206,12 +213,14 @@ def gen_parameter_description(sections, descriptions, params_rst):
             param_type = param_desc.get('type', param_desc['inner_type'])[0].split(':')[-1].split('<')[-1].strip('>')
             options = param_desc.get('options', [])
             if len(options) > 0:
-                options_str = ', options: ``{0}``'.format('``, ``'.join([x.strip() for x in options[0].split(',')]))
+                opts = '``, ``'.join([x.strip() for x in options[0].split(',')])
+                options_str = f', options: ``{opts}``'
             else:
                 options_str = ''
             aliases = param_desc.get('alias', [])
             if len(aliases) > 0:
-                aliases_str = ', aliases: ``{0}``'.format('``, ``'.join([x.strip() for x in aliases[0].split(',')]))
+                aliases_joined = '``, ``'.join([x.strip() for x in aliases[0].split(',')])
+                aliases_str = f', aliases: ``{aliases_joined}``'
             else:
                 aliases_str = ''
             checks = sorted(param_desc.get('check', []))
@@ -219,15 +228,15 @@ def gen_parameter_description(sections, descriptions, params_rst):
             if checks_len > 1:
                 number1, sign1 = parse_check(checks[0])
                 number2, sign2 = parse_check(checks[1], reverse=True)
-                checks_str = ', constraints: ``{0} {1} {2} {3} {4}``'.format(number2, sign2, name, sign1, number1)
+                checks_str = f', constraints: ``{number2} {sign2} {name} {sign1} {number1}``'
             elif checks_len == 1:
                 number, sign = parse_check(checks[0])
-                checks_str = ', constraints: ``{0} {1} {2}``'.format(name, sign, number)
+                checks_str = f', constraints: ``{name} {sign} {number}``'
             else:
                 checks_str = ''
-            main_desc = '-  ``{0}`` :raw-html:`<a id="{0}" title="Permalink to this parameter" href="#{0}">&#x1F517;&#xFE0E;</a>`, default = ``{1}``, type = {2}{3}{4}{5}'.format(name, default, param_type, options_str, aliases_str, checks_str)
+            main_desc = f'-  ``{name}`` :raw-html:`<a id="{name}" title="Permalink to this parameter" href="#{name}">&#x1F517;&#xFE0E;</a>`, default = ``{default}``, type = {param_type}{options_str}{aliases_str}{checks_str}'
             params_to_write.append(main_desc)
-            params_to_write.extend([' ' * 3 * int(desc[0][-1]) + '-  ' + desc[1] for desc in param_desc['desc']])
+            params_to_write.extend([f"{' ' * 3 * int(desc[0][-1])}-  {desc[1]}" for desc in param_desc['desc']])
 
     with open(params_rst) as original_params_file:
         all_lines = original_params_file.read()
@@ -260,21 +269,37 @@ def gen_parameter_code(config_hpp, config_out_cpp):
     keys, infos = get_parameter_infos(config_hpp)
     names = get_names(infos)
     alias = get_alias(infos)
-    str_to_write = "/// This file is auto generated by LightGBM\\helpers\\parameter_generator.py from LightGBM\\include\\LightGBM\\config.h file.\n"
+    str_to_write = r"""/*!
+ * Copyright (c) 2018 Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See LICENSE file in the project root for license information.
+ *
+ * \note
+ * This file is auto generated by LightGBM\helpers\parameter_generator.py from LightGBM\include\LightGBM\config.h file.
+ */
+"""
     str_to_write += "#include<LightGBM/config.h>\nnamespace LightGBM {\n"
     # alias table
-    str_to_write += "std::unordered_map<std::string, std::string> Config::alias_table({\n"
+    str_to_write += "const std::unordered_map<std::string, std::string>& Config::alias_table() {\n"
+    str_to_write += "  static std::unordered_map<std::string, std::string> aliases({\n"
+
     for pair in alias:
-        str_to_write += "  {\"%s\", \"%s\"},\n" % (pair[0], pair[1])
-    str_to_write += "});\n\n"
+        str_to_write += f'  {{"{pair[0]}", "{pair[1]}"}},\n'
+    str_to_write += "  });\n"
+    str_to_write += "  return aliases;\n"
+    str_to_write += "}\n\n"
+
     # names
-    str_to_write += "std::unordered_set<std::string> Config::parameter_set({\n"
+    str_to_write += "const std::unordered_set<std::string>& Config::parameter_set() {\n"
+    str_to_write += "  static std::unordered_set<std::string> params({\n"
+
     for name in names:
-        str_to_write += "  \"%s\",\n" % (name)
-    str_to_write += "});\n\n"
+        str_to_write += f'  "{name}",\n'
+    str_to_write += "  });\n"
+    str_to_write += "  return params;\n"
+    str_to_write += "}\n\n"
     # from strings
     str_to_write += "void Config::GetMembersFromString(const std::unordered_map<std::string, std::string>& params) {\n"
-    str_to_write += "  std::string tmp_str = \"\";\n"
+    str_to_write += '  std::string tmp_str = "";\n'
     for x in infos:
         for y in x:
             if "[doc-only]" in y:
@@ -287,26 +312,26 @@ def gen_parameter_code(config_hpp, config_out_cpp):
             tmp = set_one_var_from_string(name, param_type, checks)
             str_to_write += tmp
     # tails
-    str_to_write += "}\n\n"
+    str_to_write = f"{str_to_write.strip()}\n}}\n\n"
     str_to_write += "std::string Config::SaveMembersToString() const {\n"
     str_to_write += "  std::stringstream str_buf;\n"
     for x in infos:
         for y in x:
-            if "[doc-only]" in y:
+            if "[doc-only]" in y or "[no-save]" in y:
                 continue
             param_type = y["inner_type"][0]
             name = y["name"][0]
             if "vector" in param_type:
                 if "int8" in param_type:
-                    str_to_write += "  str_buf << \"[%s: \" << Common::Join(Common::ArrayCast<int8_t, int>(%s), \",\") << \"]\\n\";\n" % (name, name)
+                    str_to_write += f'  str_buf << "[{name}: " << Common::Join(Common::ArrayCast<int8_t, int>({name}), ",") << "]\\n";\n'
                 else:
-                    str_to_write += "  str_buf << \"[%s: \" << Common::Join(%s, \",\") << \"]\\n\";\n" % (name, name)
+                    str_to_write += f'  str_buf << "[{name}: " << Common::Join({name}, ",") << "]\\n";\n'
             else:
-                str_to_write += "  str_buf << \"[%s: \" << %s << \"]\\n\";\n" % (name, name)
+                str_to_write += f'  str_buf << "[{name}: " << {name} << "]\\n";\n'
     # tails
     str_to_write += "  return str_buf.str();\n"
     str_to_write += "}\n\n"
-    str_to_write += "}\n"
+    str_to_write += "}  // namespace LightGBM\n"
     with open(config_out_cpp, "w") as config_out_cpp_file:
         config_out_cpp_file.write(str_to_write)
 

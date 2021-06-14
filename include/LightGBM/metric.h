@@ -1,14 +1,18 @@
+/*!
+ * Copyright (c) 2016 Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See LICENSE file in the project root for license information.
+ */
 #ifndef LIGHTGBM_METRIC_H_
 #define LIGHTGBM_METRIC_H_
 
+#include <LightGBM/config.h>
+#include <LightGBM/dataset.h>
+#include <LightGBM/meta.h>
+#include <LightGBM/objective_function.h>
 #include <LightGBM/utils/log.h>
 #include <LightGBM/utils/common.h>
 
-#include <LightGBM/meta.h>
-#include <LightGBM/config.h>
-#include <LightGBM/dataset.h>
-#include <LightGBM/objective_function.h>
-
+#include <string>
 #include <vector>
 
 namespace LightGBM {
@@ -34,7 +38,7 @@ class Metric {
 
   virtual double factor_to_bigger_better() const = 0;
   /*!
-  * \brief Calcaluting and printing metric result
+  * \brief Calculating and printing metric result
   * \param score Current prediction score
   */
   virtual std::vector<double> Eval(const double* score, const ObjectiveFunction* objective) const = 0;
@@ -99,8 +103,16 @@ class DCGCalculator {
   static double CalMaxDCGAtK(data_size_t k,
     const label_t* label, data_size_t num_data);
 
+
   /*!
-  * \brief Check the label range for NDCG and lambdarank
+  * \brief Check the metadata for NDCG and LambdaRank
+  * \param metadata Metadata
+  * \param num_queries Number of queries
+  */
+  static void CheckMetadata(const Metadata& metadata, data_size_t num_queries);
+
+  /*!
+  * \brief Check the label range for NDCG and LambdaRank
   * \param label Pointer of label
   * \param num_data Number of data
   */

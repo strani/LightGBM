@@ -1,12 +1,12 @@
 # coding: utf-8
-# pylint: disable = invalid-name, C0111
-import lightgbm as lgb
 import pandas as pd
+
+import lightgbm as lgb
 
 if lgb.compat.MATPLOTLIB_INSTALLED:
     import matplotlib.pyplot as plt
 else:
-    raise ImportError('You need to install matplotlib for plot_example.py.')
+    raise ImportError('You need to install matplotlib and restart your session for plot_example.py.')
 
 print('Loading data...')
 # load or create your dataset
@@ -48,6 +48,10 @@ plt.show()
 
 print('Plotting feature importances...')
 ax = lgb.plot_importance(gbm, max_num_features=10)
+plt.show()
+
+print('Plotting split value histogram...')
+ax = lgb.plot_split_value_histogram(gbm, feature='f26', bins='auto')
 plt.show()
 
 print('Plotting 54th tree...')  # one tree use categorical feature to split

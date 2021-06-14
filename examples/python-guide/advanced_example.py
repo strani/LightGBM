@@ -1,15 +1,12 @@
 # coding: utf-8
-# pylint: disable = invalid-name, C0111
 import json
-import lightgbm as lgb
-import pandas as pd
+import pickle
+
 import numpy as np
+import pandas as pd
 from sklearn.metrics import mean_squared_error
 
-try:
-    import cPickle as pickle
-except BaseException:
-    import pickle
+import lightgbm as lgb
 
 print('Loading data...')
 # load or create your dataset
@@ -96,7 +93,7 @@ with open('model.pkl', 'rb') as fin:
 # can predict with any iteration when loaded in pickle way
 y_pred = pkl_bst.predict(X_test, num_iteration=7)
 # eval with loaded model
-print("The rmse of pickled model's prediction is:", mean_squared_error(y_test, y_pred) ** 0.5)
+print("The RMSE of pickled model's prediction is:", mean_squared_error(y_test, y_pred) ** 0.5)
 
 # continue training
 # init_model accepts:
@@ -148,8 +145,13 @@ def loglikelihood(preds, train_data):
 # self-defined eval metric
 # f(preds: array, train_data: Dataset) -> name: string, eval_result: float, is_higher_better: bool
 # binary error
+# NOTE: when you do customized loss function, the default prediction value is margin
+# This may make built-in evaluation metric calculate wrong results
+# For example, we are doing log likelihood loss, the prediction is score before logistic transformation
+# Keep this in mind when you use the customization
 def binary_error(preds, train_data):
     labels = train_data.get_label()
+    preds = 1. / (1. + np.exp(-preds))
     return 'error', np.mean(labels != (preds > 0.5)), False
 
 
@@ -167,8 +169,13 @@ print('Finished 40 - 50 rounds with self-defined objective function and eval met
 # another self-defined eval metric
 # f(preds: array, train_data: Dataset) -> name: string, eval_result: float, is_higher_better: bool
 # accuracy
+# NOTE: when you do customized loss function, the default prediction value is margin
+# This may make built-in evaluation metric calculate wrong results
+# For example, we are doing log likelihood loss, the prediction is score before logistic transformation
+# Keep this in mind when you use the customization
 def accuracy(preds, train_data):
     labels = train_data.get_label()
+    preds = 1. / (1. + np.exp(-preds))
     return 'accuracy', np.mean(labels == (preds > 0.5)), True
 
 
@@ -177,8 +184,7 @@ gbm = lgb.train(params,
                 num_boost_round=10,
                 init_model=gbm,
                 fobj=loglikelihood,
-                feval=lambda preds, train_data: [binary_error(preds, train_data),
-                                                 accuracy(preds, train_data)],
+                feval=[binary_error, accuracy],
                 valid_sets=lgb_eval)
 
 print('Finished 50 - 60 rounds with self-defined objective function '
